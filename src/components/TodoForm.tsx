@@ -8,11 +8,17 @@ import { CATEGORY_ORDER, CATEGORY_META } from "@/lib/categories";
 const inputClass =
   "rounded-xl border border-black/10 bg-white/70 px-3 py-2 text-sm shadow-sm outline-none transition focus:border-rose-300 focus:ring-2 focus:ring-rose-200 dark:border-white/10 dark:bg-white/5 dark:focus:border-rose-500/50 dark:focus:ring-rose-500/20";
 
-export function TodoForm({ onCreated }: { onCreated: () => void }) {
+export function TodoForm({
+  onCreated,
+  defaultCategory = "regular",
+}: {
+  onCreated: () => void;
+  defaultCategory?: Category;
+}) {
   const { personId } = usePerson();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
-  const [category, setCategory] = useState<Category>("regular");
+  const [category, setCategory] = useState<Category>(defaultCategory);
   const [dueDate, setDueDate] = useState("");
   const [dueTime, setDueTime] = useState("");
   const [recurrence, setRecurrence] = useState<Recurrence>("none");
@@ -41,7 +47,7 @@ export function TodoForm({ onCreated }: { onCreated: () => void }) {
     });
 
     setTitle("");
-    setCategory("regular");
+    setCategory(defaultCategory);
     setDueDate("");
     setDueTime("");
     setRecurrence("none");

@@ -25,3 +25,12 @@ export type GroceryItem = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type NeedItem = {
+  id: string;
+  text: string;
+  tags: string[];
+  addedById: string | null;
+  addedBy: { id: string; name: string } | null;
+  createdAt: string;
+};

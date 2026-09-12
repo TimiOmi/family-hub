@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { Todo } from "@/lib/types";
-import { CATEGORY_ORDER, CATEGORY_META } from "@/lib/categories";
+import type { Category, Todo } from "@/lib/types";
 
 const recurrenceLabel: Record<Todo["recurrence"], string> = {
   none: "",
@@ -16,17 +15,18 @@ function TodoRow({
   done,
   onToggleDone,
   onDelete,
+  accentClass,
 }: {
   t: Todo;
   done: boolean;
   onToggleDone: (id: string, done: boolean) => void;
   onDelete: (id: string) => void;
+  accentClass: string;
 }) {
-  const meta = CATEGORY_META[t.category];
   return (
     <li
       className={`flex items-center gap-3 rounded-xl border border-black/5 border-l-4 bg-white/70 p-3 shadow-sm transition dark:border-white/5 dark:bg-white/[0.03] ${
-        done ? "opacity-50" : meta.accent
+        done ? "opacity-50" : accentClass
       }`}
     >
       <input
@@ -69,17 +69,28 @@ function TodoRow({
 
 export function TodoList({
   todos,
+  category,
+  accentClass,
   onToggleDone,
   onDelete,
 }: {
   todos: Todo[];
+  category: Category;
+  accentClass: string;
   onToggleDone: (id: string, done: boolean) => void;
   onDelete: (id: string) => void;
 }) {
-  const pending = todos.filter((t) => !t.done);
-  const done = todos.filter((t) => t.done);
+  const inCategory = todos.filter((t) => t.category === category);
+  const pending = inCategory
+    .filter((t) => !t.done)
+    .sort((a, b) => {
+      if (!a.dueAt) return 1;
+      if (!b.dueAt) return -1;
+      return new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime();
+    });
+  const done = inCategory.filter((t) => t.done);
 
-  if (todos.length === 0) {
+  if (inCategory.length === 0) {
     return (
       <p className="p-8 text-center text-sm opacity-50">
         🌤️ Nothing here yet — add your first to-do above.
@@ -89,36 +100,18 @@ export function TodoList({
 
   return (
     <div className="flex flex-col gap-6 p-4">
-      {CATEGORY_ORDER.map((category) => {
-        const items = pending
-          .filter((t) => t.category === category)
-          .sort((a, b) => {
-            if (!a.dueAt) return 1;
-            if (!b.dueAt) return -1;
-            return new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime();
-          });
-        if (items.length === 0) return null;
-        const meta = CATEGORY_META[category];
-        return (
-          <section key={category} className="flex flex-col gap-2">
-            <h2 className="flex items-center gap-2 px-1 text-sm font-semibold opacity-70">
-              <span className={`h-2 w-2 rounded-full ${meta.dot}`} />
-              {meta.emoji} {meta.label}
-            </h2>
-            <ul className="flex flex-col gap-2">
-              {items.map((t) => (
-                <TodoRow
-                  key={t.id}
-                  t={t}
-                  done={false}
-                  onToggleDone={onToggleDone}
-                  onDelete={onDelete}
-                />
-              ))}
-            </ul>
-          </section>
-        );
-      })}
+      <ul className="flex flex-col gap-2">
+        {pending.map((t) => (
+          <TodoRow
+            key={t.id}
+            t={t}
+            done={false}
+            onToggleDone={onToggleDone}
+            onDelete={onDelete}
+            accentClass={accentClass}
+          />
+        ))}
+      </ul>
 
       {done.length > 0 && (
         <details>
@@ -133,6 +126,7 @@ export function TodoList({
                 done={true}
                 onToggleDone={onToggleDone}
                 onDelete={onDelete}
+                accentClass={accentClass}
               />
             ))}
           </ul>

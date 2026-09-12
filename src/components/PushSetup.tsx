@@ -10,21 +10,22 @@ function urlBase64ToUint8Array(base64String: string) {
   return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
 }
 
+type Status = "checking" | "prompt" | "asking" | "on" | "denied" | "unsupported";
+
 export function PushSetup() {
   const { personId } = usePerson();
-  const [status, setStatus] = useState<"idle" | "asking" | "on" | "denied" | "unsupported">(
-    () => {
-      if (typeof window === "undefined") return "idle";
-      if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-        return "unsupported";
-      }
-      if (Notification.permission === "denied") return "denied";
-      return "idle";
+  const [status, setStatus] = useState<Status>(() => {
+    if (typeof window === "undefined") return "checking";
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      return "unsupported";
     }
-  );
+    if (Notification.permission === "denied") return "denied";
+    if (Notification.permission === "default") return "prompt";
+    return "checking";
+  });
 
   useEffect(() => {
-    if (!personId || status === "unsupported" || status === "denied") return;
+    if (!personId || status !== "checking") return;
     navigator.serviceWorker.register("/sw.js").catch(() => setStatus("unsupported"));
 
     if (Notification.permission === "granted") {
@@ -59,13 +60,14 @@ export function PushSetup() {
     setStatus("asking");
     const permission = await Notification.requestPermission();
     if (permission === "granted") {
+      await navigator.serviceWorker.register("/sw.js").catch(() => setStatus("unsupported"));
       await subscribe();
     } else {
       setStatus("denied");
     }
   }
 
-  if (status === "on" || status === "idle") return null;
+  if (status === "on" || status === "checking") return null;
 
   if (status === "unsupported") {
     return (
@@ -88,7 +90,8 @@ export function PushSetup() {
   return (
     <button
       onClick={requestPermission}
-      className="mx-auto block rounded-xl bg-rose-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-rose-600 active:scale-[0.98]"
+      disabled={status === "asking"}
+      className="mx-auto block rounded-xl bg-rose-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-rose-600 active:scale-[0.98] disabled:opacity-60"
     >
       🔔 Turn on reminder alerts
     </button>

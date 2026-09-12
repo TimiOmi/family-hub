@@ -17,6 +17,7 @@ model Person {
 
   todos           Todo[]
   groceryItems    GroceryItem[]
+  needItems       NeedItem[]
   pushSubscriptions PushSubscription[]
 }
 
@@ -58,6 +59,15 @@ model GroceryItem {
   addedBy     Person?  @relation(fields: [addedById], references: [id], onDelete: SetNull)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model NeedItem {
+  id        String   @id @default(cuid())
+  text      String
+  tags      String[] @default([])
+  addedById String?
+  addedBy   Person?  @relation(fields: [addedById], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
 }
 
 model PushSubscription {
