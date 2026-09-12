@@ -14,11 +14,81 @@ const TAG_STYLES: Record<string, string> = {
   washing: "bg-teal-100 text-teal-800 dark:bg-teal-500/15 dark:text-teal-300",
 };
 
+function tagClass(tag: string, active: boolean) {
+  const base = TAG_STYLES[tag] ?? "bg-rose-100 text-rose-800";
+  return active
+    ? base + " ring-2 ring-offset-1 ring-black/10 dark:ring-white/20"
+    : "bg-black/5 text-black/50 hover:bg-black/10 dark:bg-white/5 dark:text-white/50";
+}
+
+function ItemRow({
+  item,
+  onToggleTag,
+  onRemove,
+}: {
+  item: NeedItem;
+  onToggleTag: (item: NeedItem, tag: string) => void;
+  onRemove: (id: string) => void;
+}) {
+  const [editingTags, setEditingTags] = useState(false);
+
+  return (
+    <li className="flex flex-col gap-2 rounded-xl border-l-4 border-l-rose-300 bg-white/70 p-3 shadow-sm dark:bg-white/[0.03]">
+      <div className="flex items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="font-medium">{item.text}</p>
+          {item.tags.length > 0 && (
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              {item.tags.map((tag) => (
+                <span
+                  key={tag}
+                  className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                    TAG_STYLES[tag] ?? "bg-rose-100 text-rose-800"
+                  }`}
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        <button
+          onClick={() => setEditingTags((v) => !v)}
+          className="shrink-0 rounded-full bg-black/5 px-2 py-1 text-xs opacity-60 hover:opacity-100 dark:bg-white/10"
+        >
+          🏷️
+        </button>
+        <button
+          onClick={() => onRemove(item.id)}
+          className="shrink-0 text-xs opacity-40 hover:opacity-80"
+        >
+          Got it
+        </button>
+      </div>
+      {editingTags && (
+        <div className="flex flex-wrap gap-1.5 border-t border-black/5 pt-2 dark:border-white/5">
+          {NEED_TAGS.map((tag) => (
+            <button
+              key={tag}
+              onClick={() => onToggleTag(item, tag)}
+              className={`rounded-full px-2.5 py-1 text-xs font-medium transition ${tagClass(
+                tag,
+                item.tags.includes(tag)
+              )}`}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+      )}
+    </li>
+  );
+}
+
 export function ThingsWeNeed() {
   const { personId } = usePerson();
   const { data: items, refetch } = usePolling<NeedItem[]>("/api/needs");
   const [text, setText] = useState("");
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [filterTag, setFilterTag] = useState<string | null>(null);
 
   async function addItem(e: React.FormEvent) {
@@ -34,12 +104,11 @@ export function ThingsWeNeed() {
         fetch("/api/needs", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: entry, tags: selectedTags, addedById: personId }),
+          body: JSON.stringify({ text: entry, tags: [], addedById: personId }),
         })
       )
     );
     setText("");
-    setSelectedTags([]);
     refetch();
   }
 
@@ -48,10 +117,16 @@ export function ThingsWeNeed() {
     refetch();
   }
 
-  function toggleSelectedTag(tag: string) {
-    setSelectedTags((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
-    );
+  async function toggleTag(item: NeedItem, tag: string) {
+    const tags = item.tags.includes(tag)
+      ? item.tags.filter((t) => t !== tag)
+      : [...item.tags, tag];
+    await fetch(`/api/needs/${item.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tags }),
+    });
+    refetch();
   }
 
   const list = items ?? [];
@@ -61,42 +136,25 @@ export function ThingsWeNeed() {
     <div className="flex flex-col gap-4 p-4">
       <form
         onSubmit={addItem}
-        className="flex flex-col gap-3 rounded-2xl border border-black/10 bg-white/60 p-4 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/[0.03]"
+        className="flex gap-2 rounded-2xl border border-black/10 bg-white/60 p-3 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/[0.03]"
       >
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Almost out of… e.g. rice, detergent, toothpaste"
-          className="rounded-xl border border-black/10 bg-white/70 px-3 py-2 text-sm shadow-sm outline-none focus:border-rose-300 focus:ring-2 focus:ring-rose-200 dark:border-white/10 dark:bg-white/5"
+          className="flex-1 rounded-xl border border-black/10 bg-white/70 px-3 py-2 text-sm shadow-sm outline-none focus:border-rose-300 focus:ring-2 focus:ring-rose-200 dark:border-white/10 dark:bg-white/5"
         />
-        <div className="flex flex-wrap gap-2">
-          {NEED_TAGS.map((tag) => {
-            const selected = selectedTags.includes(tag);
-            return (
-              <button
-                key={tag}
-                type="button"
-                onClick={() => toggleSelectedTag(tag)}
-                className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-                  selected
-                    ? (TAG_STYLES[tag] ?? "bg-rose-100 text-rose-800") +
-                      " ring-2 ring-offset-1 ring-black/10 dark:ring-white/20"
-                    : "bg-black/5 text-black/50 hover:bg-black/10 dark:bg-white/5 dark:text-white/50"
-                }`}
-              >
-                {tag}
-              </button>
-            );
-          })}
-        </div>
         <button
           type="submit"
           disabled={!text.trim()}
-          className="self-end rounded-xl bg-rose-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-rose-600 active:scale-[0.98] disabled:opacity-40"
+          className="shrink-0 rounded-xl bg-rose-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-rose-600 active:scale-[0.98] disabled:opacity-40"
         >
-          Add to the list
+          Add
         </button>
       </form>
+      <p className="px-1 text-xs opacity-50">
+        Tap 🏷️ on an item afterward to tag it — tags don&apos;t need to be set right away.
+      </p>
 
       {list.length > 0 && (
         <div className="flex flex-wrap gap-2 px-1">
@@ -108,62 +166,38 @@ export function ThingsWeNeed() {
                 : "bg-black/5 text-black/50 dark:bg-white/5 dark:text-white/50"
             }`}
           >
-            All
+            All ({list.length})
           </button>
-          {NEED_TAGS.map((tag) => (
-            <button
-              key={tag}
-              onClick={() => setFilterTag(tag === filterTag ? null : tag)}
-              className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-                filterTag === tag
-                  ? (TAG_STYLES[tag] ?? "bg-rose-100 text-rose-800") +
-                    " ring-2 ring-offset-1 ring-black/10 dark:ring-white/20"
-                  : "bg-black/5 text-black/50 hover:bg-black/10 dark:bg-white/5 dark:text-white/50"
-              }`}
-            >
-              {tag}
-            </button>
-          ))}
+          {NEED_TAGS.map((tag) => {
+            const count = list.filter((i) => i.tags.includes(tag)).length;
+            if (count === 0) return null;
+            return (
+              <button
+                key={tag}
+                onClick={() => setFilterTag(tag === filterTag ? null : tag)}
+                className={`rounded-full px-3 py-1 text-xs font-medium transition ${tagClass(
+                  tag,
+                  filterTag === tag
+                )}`}
+              >
+                {tag} ({count})
+              </button>
+            );
+          })}
         </div>
       )}
 
       {visible.length === 0 && (
         <p className="p-8 text-center text-sm opacity-50">
-          📝 Nothing jotted down yet — add things here as you notice you&apos;re running low.
+          {filterTag
+            ? `Nothing tagged "${filterTag}" right now.`
+            : "📝 Nothing jotted down yet — add things here as you notice you're running low."}
         </p>
       )}
 
       <ul className="flex flex-col gap-2">
         {visible.map((item) => (
-          <li
-            key={item.id}
-            className="flex items-center gap-3 rounded-xl border-l-4 border-l-rose-300 bg-white/70 p-3 shadow-sm dark:bg-white/[0.03]"
-          >
-            <div className="min-w-0 flex-1">
-              <p className="font-medium">{item.text}</p>
-              <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                {item.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                      TAG_STYLES[tag] ?? "bg-rose-100 text-rose-800"
-                    }`}
-                  >
-                    {tag}
-                  </span>
-                ))}
-                {item.addedBy && (
-                  <span className="text-[11px] opacity-50">· jotted by {item.addedBy.name}</span>
-                )}
-              </div>
-            </div>
-            <button
-              onClick={() => removeItem(item.id)}
-              className="shrink-0 text-xs opacity-40 hover:opacity-80"
-            >
-              Got it
-            </button>
-          </li>
+          <ItemRow key={item.id} item={item} onToggleTag={toggleTag} onRemove={removeItem} />
         ))}
       </ul>
     </div>
