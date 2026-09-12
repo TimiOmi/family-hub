@@ -1,0 +1,71 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Person {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  todos           Todo[]
+  groceryItems    GroceryItem[]
+  pushSubscriptions PushSubscription[]
+}
+
+enum Recurrence {
+  none
+  daily
+  weekly
+  monthly
+}
+
+enum Category {
+  spiritual
+  regular
+  work
+}
+
+model Todo {
+  id            String     @id @default(cuid())
+  title         String
+  notes         String?
+  category      Category   @default(regular)
+  dueAt         DateTime?
+  recurrence    Recurrence @default(none)
+  done          Boolean    @default(false)
+  lastNotifiedAt DateTime?
+  createdById   String?
+  createdBy     Person?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([dueAt])
+}
+
+model GroceryItem {
+  id          String   @id @default(cuid())
+  name        String
+  needed      Boolean  @default(true)
+  addedById   String?
+  addedBy     Person?  @relation(fields: [addedById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  personId  String
+  person    Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+}
