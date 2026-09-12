@@ -12,12 +12,21 @@ export function ShoppingList() {
 
   async function addItem(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) return;
-    await fetch("/api/groceries", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, addedById: personId }),
-    });
+    const entries = name
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (entries.length === 0) return;
+
+    await Promise.all(
+      entries.map((entry) =>
+        fetch("/api/groceries", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: entry, addedById: personId }),
+        })
+      )
+    );
     setName("");
     refetch();
   }

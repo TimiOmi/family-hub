@@ -21,9 +21,11 @@
   }
 }
 
-body {
+html {
   background: linear-gradient(160deg, var(--background), var(--background-2) 60%);
-  background-attachment: fixed;
+}
+
+body {
   color: var(--foreground);
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }

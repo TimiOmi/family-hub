@@ -23,12 +23,21 @@ export function ThingsWeNeed() {
 
   async function addItem(e: React.FormEvent) {
     e.preventDefault();
-    if (!text.trim()) return;
-    await fetch("/api/needs", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text, tags: selectedTags, addedById: personId }),
-    });
+    const entries = text
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (entries.length === 0) return;
+
+    await Promise.all(
+      entries.map((entry) =>
+        fetch("/api/needs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: entry, tags: selectedTags, addedById: personId }),
+        })
+      )
+    );
     setText("");
     setSelectedTags([]);
     refetch();
@@ -57,7 +66,7 @@ export function ThingsWeNeed() {
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Almost out of… (rice, detergent, toothpaste)"
+          placeholder="Almost out of… e.g. rice, detergent, toothpaste"
           className="rounded-xl border border-black/10 bg-white/70 px-3 py-2 text-sm shadow-sm outline-none focus:border-rose-300 focus:ring-2 focus:ring-rose-200 dark:border-white/10 dark:bg-white/5"
         />
         <div className="flex flex-wrap gap-2">
